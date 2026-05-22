@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import math
 import numpy as np
+import time
 
 from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
@@ -12,7 +13,10 @@ cap = cv2.VideoCapture(0)
 
 # MediaPipe Hands
 mpHands = mp.solutions.hands
-hands = mpHands.Hands()
+hands = mpHands.Hands(
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7
+)
 mpDraw = mp.solutions.drawing_utils
 
 # Volume setup
@@ -30,6 +34,10 @@ volRange = volume.GetVolumeRange()
 
 minVol = volRange[0]
 maxVol = volRange[1]
+
+pTime =  0
+smoothness = 5
+currentVol = 0
 
 while True:
 
@@ -124,7 +132,8 @@ while True:
                 [minVol, maxVol]
             )
 
-            volume.SetMasterVolumeLevel(vol, None)
+            currentVol = currentVol + (vol - currentVol) / smoothness
+            volume.SetMasterVolumeLevel(currentVol, None)
 
             # Volume percentage
             volPercent = np.interp(
@@ -132,6 +141,11 @@ while True:
                 [20, 200],
                 [0, 100]
             )
+            volBar = np.interp(
+                 distance,
+                [20, 200],
+                [400, 150]
+        )
 
             # Show volume text
             cv2.putText(
@@ -143,8 +157,37 @@ while True:
                 (0, 255, 0),
                 3
             )
+            cTime = time.time()
+            fps = 1 / (cTime - pTime)
+            pTime = cTime
 
-    cv2.imshow("Hand Gesture Volume Control", img)
+            cv2.putText(
+                img,
+                f'FPS: {int(fps)}',
+                (40, 100),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 0, 0),
+                3
+           )
+            # Volume bar outline
+            cv2.rectangle(
+              img,
+             (50, 150),
+             (85, 400),
+            (0, 255, 0),
+             3
+            )
+
+            # Filled volume bar
+            cv2.rectangle(
+                img,
+                (50, int(volBar)),
+                (85, 400),
+                (0, 255, 0),
+                cv2.FILLED
+            )
+            cv2.imshow("Hand Gesture Volume Control", img)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
