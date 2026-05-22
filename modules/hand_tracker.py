@@ -9,11 +9,19 @@ class HandTracker:
         self.mpHands = mp.solutions.hands
 
         self.hands = self.mpHands.Hands(
+            static_image_mode=False,
+            max_num_hands=1,
             min_detection_confidence=0.7,
             min_tracking_confidence=0.7
         )
 
         self.mpDraw = mp.solutions.drawing_utils
+
+        self.results = None
+
+    # -----------------------------------
+    # FIND HANDS
+    # -----------------------------------
 
     def find_hands(self, img):
 
@@ -33,11 +41,15 @@ class HandTracker:
 
         return img
 
+    # -----------------------------------
+    # FIND LANDMARK POSITIONS
+    # -----------------------------------
+
     def find_position(self, img):
 
         lmList = []
 
-        if self.results.multi_hand_landmarks:
+        if self.results and self.results.multi_hand_landmarks:
 
             hand = self.results.multi_hand_landmarks[0]
 
@@ -45,7 +57,8 @@ class HandTracker:
 
                 h, w, c = img.shape
 
-                cx, cy = int(lm.x * w), int(lm.y * h)
+                cx = int(lm.x * w)
+                cy = int(lm.y * h)
 
                 lmList.append([id, cx, cy])
 

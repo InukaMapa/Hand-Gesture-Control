@@ -1,20 +1,41 @@
 import cv2
+import pyautogui
+
+pyautogui.FAILSAFE = False
 
 from modules.hand_tracker import HandTracker
-from modules.virtual_keyboard import VirtualKeyboard
 from modules.volume_control import VolumeControl
 from modules.mouse_control import MouseControl
 from modules.gesture_manager import GestureManager
 
-cap = cv2.VideoCapture(0)
+# =====================================
+# CAMERA SETUP
+# =====================================
+
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+# HD Resolution
+cap.set(3, 1280)
+cap.set(4, 720)
+
+# =====================================
+# MODULES
+# =====================================
 
 tracker = HandTracker()
 
-keyboard = VirtualKeyboard()
 volume = VolumeControl()
+
 mouse = MouseControl()
 
 gesture_manager = GestureManager()
+
+# =====================================
+# MAIN LOOP
+# =====================================
+import time
+
+exit_start_time = None
 
 while True:
 
@@ -23,49 +44,121 @@ while True:
     if not success:
         continue
 
+    # Mirror effect
     img = cv2.flip(img, 1)
 
-    # Hand detection
+    # =====================================
+    # HAND DETECTION
+    # =====================================
+
     img = tracker.find_hands(img)
 
-    # Landmarks
     lmList = tracker.find_position(img)
 
-    # Detect mode
+    # Finger detection
+    fingers = (
+        gesture_manager.get_fingers(lmList)
+        if len(lmList) != 0
+        else []
+    )
+
+    # =====================================
+    # MODE DETECTION
+    # =====================================
+
     mode = gesture_manager.detect_mode(lmList)
 
-    # Show current mode
+    # =====================================
+    # TOP UI PANEL
+    # =====================================
+
+    cv2.rectangle(
+        img,
+        (0, 0),
+        (1280, 90),
+        (30, 30, 30),
+        cv2.FILLED
+    )
+
+    # Title
     cv2.putText(
         img,
-        f"MODE: {mode}",
-        (20, 100),
+        "AI Gesture Control System",
+        (20, 40),
         cv2.FONT_HERSHEY_SIMPLEX,
         1,
-        (255, 0, 0),
+        (0, 255, 255),
         3
     )
 
-    # Keyboard Mode
-    if mode == "KEYBOARD":
+    # Active mode
+    cv2.putText(
+        img,
+        f"MODE : {mode if mode else 'NONE'}",
+        (20, 75),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        (255, 255, 255),
+        2
+    )
 
-        img = keyboard.draw_keyboard(img)
+    # Finger debug
+    cv2.putText(
+        img,
+        f"FINGERS : {fingers}",
+        (500, 75),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.8,
+        (0, 255, 0),
+        2
+    )
 
-        img = keyboard.detect_key_press(img, lmList)
+    # =====================================
+    # MODE SYSTEM
+    # =====================================
 
-    # Volume Mode
+    # MOUSE MODE
+    if mode == "MOUSE":
+
+        img = mouse.control_mouse(img, lmList)
+
+    # VOLUME MODE
     elif mode == "VOLUME":
 
         img = volume.control_volume(img, lmList)
 
-    # Mouse Mode
-    elif mode == "MOUSE":
+    # IDLE MODE
+    else:
 
-        img = mouse.control_mouse(img, lmList)
+        cv2.putText(
+            img,
+            "SYSTEM IDLE",
+            (450, 350),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.5,
+            (0, 255, 0),
+            4
+        )
 
-    cv2.imshow("AI Gesture System", img)
+    # =====================================
+    # BOTTOM GUIDE PANEL
+    # =====================================
 
+
+    # =====================================
+    # SHOW WINDOW
+    # =====================================
+
+    cv2.imshow("AI Gesture Control System", img)
+
+    # Quit
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+# =====================================
+# RELEASE
+# =====================================
+
 cap.release()
+
 cv2.destroyAllWindows()
