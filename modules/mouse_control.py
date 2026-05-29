@@ -17,9 +17,13 @@ class MouseControl:
 
         self.smoothening = 5
 
+        # Click state
+        self.left_clicking = False
+        self.right_clicking = False
+
         # Click delay
         self.last_click_time = 0
-        self.click_delay = 0.5
+        self.click_delay = 0.4
 
     def control_mouse(self, img, lmList):
 
@@ -68,25 +72,38 @@ class MouseControl:
 
         left_distance = math.hypot(x_thumb - x1, y_thumb - y1)
 
-        if left_distance < 35:
+        # Estimate hand size to adapt thresholds for different distances from the camera
+        wrist_x, wrist_y = lmList[0][1], lmList[0][2]
+        middle_mcp_x, middle_mcp_y = lmList[9][1], lmList[9][2]
+        hand_size = max(20, math.hypot(wrist_x - middle_mcp_x, wrist_y - middle_mcp_y))
 
+        left_click_threshold = max(20, min(70, int(hand_size * 0.35)))
+        right_click_threshold = max(20, min(70, int(hand_size * 0.30)))
+
+        left_pinch = left_distance < left_click_threshold
+
+        if left_pinch and not self.left_clicking and not self.right_clicking:
             current_time = time.time()
 
             if current_time - self.last_click_time > self.click_delay:
-
                 pyautogui.click()
-
+                self.left_clicking = True
+                self.right_clicking = False
                 self.last_click_time = current_time
 
-                cv2.putText(
-                    img,
-                    "LEFT CLICK",
-                    (20, 100),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 0),
-                    3
-                )
+        if not left_pinch:
+            self.left_clicking = False
+
+        if self.left_clicking:
+            cv2.putText(
+                img,
+                "LEFT CLICK",
+                (20, 100),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 255, 0),
+                3
+            )
 
         # -------------------------
         # RIGHT CLICK
@@ -94,26 +111,33 @@ class MouseControl:
         # -------------------------
 
         right_distance = math.hypot(x1 - x2, y1 - y2)
+        right_pinch = (
+            right_distance < right_click_threshold
+            and left_distance > left_click_threshold * 0.6
+        )
 
-        if right_distance < 30:
-
+        if right_pinch and not self.right_clicking and not self.left_clicking:
             current_time = time.time()
 
             if current_time - self.last_click_time > self.click_delay:
-
                 pyautogui.rightClick()
-
+                self.right_clicking = True
+                self.left_clicking = False
                 self.last_click_time = current_time
 
-                cv2.putText(
-                    img,
-                    "RIGHT CLICK",
-                    (20, 150),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 0, 255),
-                    3
-                )
+        if not right_pinch:
+            self.right_clicking = False
+
+        if self.right_clicking:
+            cv2.putText(
+                img,
+                "RIGHT CLICK",
+                (20, 150),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (0, 0, 255),
+                3
+            )
 
         # Mode label
         cv2.putText(
