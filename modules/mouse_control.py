@@ -11,10 +11,6 @@ class MouseControl:
         # Screen size
         self.screen_w, self.screen_h = pyautogui.size()
 
-        # Camera size
-        self.cam_w = 640
-        self.cam_h = 480
-
         # Smooth movement
         self.prev_x = 0
         self.prev_y = 0
@@ -43,8 +39,15 @@ class MouseControl:
         # MOUSE MOVEMENT
         # -------------------------
 
-        screen_x = int((x1 / self.cam_w) * self.screen_w)
-        screen_y = int((y1 / self.cam_h) * self.screen_h)
+        # Use the actual frame size from the current image
+        frame_h, frame_w, _ = img.shape
+
+        screen_x = int((x1 / frame_w) * self.screen_w)
+        screen_y = int((y1 / frame_h) * self.screen_h)
+
+        # Keep coordinates inside the screen bounds
+        screen_x = max(0, min(self.screen_w - 1, screen_x))
+        screen_y = max(0, min(self.screen_h - 1, screen_y))
 
         # Smooth movement
         curr_x = self.prev_x + (screen_x - self.prev_x) / self.smoothening
